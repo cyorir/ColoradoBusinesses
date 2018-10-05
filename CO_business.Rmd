@@ -1,0 +1,73 @@
+---
+title: "CO_businesses"
+author: "cyorir"
+date: "October 4, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The Colorado information Marketplace offers a large dataset containing geocoded information about Colorado businesses. This dataset is available at:
+
+https://data.colorado.gov/Business/All-CO-businesses-geocoded/k5bm-9tcj
+
+First the dataset must be loaded:
+
+```{r read}
+business_data <- read.csv("All_CO_businesses_geocoded.csv")
+head(business_data)
+```
+
+Each business has a status, which is one of the following:
+
+```{r names}
+possible_statuses <- levels(business_data$entitystatus)
+possible_statuses
+```
+
+For disolved businesses, the date of dissolution is listed in the entityname:
+
+```{r dissolved_name}
+suppressMessages(library(dplyr))
+dissolved <- business_data %>% filter(as.character(entitystatus) %in% c("Administratively Dissolved",
+                                                          "Dissolved (Term Expired)",
+                                                          "Judicially Dissolved",
+                                                          "Voluntarily Dissolved"))
+head(dissolved$entityname)
+```
+
+The formation date of dissolved businesses can be plotted over time:
+
+```{r formdate}
+suppressMessages(library(lubridate))
+dissolved <- dissolved %>% mutate(formdate = mdy(as.character(entityformdate)))
+suppressMessages(library(ggplot2))
+ggplot(dissolved, aes(x=formdate)) + geom_histogram(bins = 50)
+```
+
+Note the peak near the dot-com bubble. The earlier dates are easier to visualize on a log scale:
+
+```{r formdate_log}
+ggplot(dissolved, aes(x=formdate)) + geom_histogram(bins = 50) + scale_y_log10()
+```
+
+It is more difficult to extract the dissolution year, and many rows will have to be ignored:
+
+```{r dissolved_date}
+dissolved <- dissolved %>% mutate(disdate = as.numeric(substr(entityname,nchar(as.character(entityname))-3,nchar(as.character(entityname)))))
+summary(dissolved$disdate)
+```
+
+Many of the new businesses formed in the dot-com bubble did not last long:
+
+```{r dissolved_plot}
+ggplot(dissolved, aes(x=disdate)) + geom_histogram(bins = 28) + xlim(1990,2018)
+```
+
+Earlier dates are easier to visualize using a log scale, as previously:
+
+```{r dissolved_plot_log}
+ggplot(dissolved, aes(x=disdate)) + geom_histogram(bins = 58) + xlim(1960,2018) + scale_y_log10()
+```
